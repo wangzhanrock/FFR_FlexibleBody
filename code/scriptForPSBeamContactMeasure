@@ -1,0 +1,37 @@
+#!/bin/bash
+#
+# Script to measure the performance under different optimization.
+# The measurement is taken 3 times and direct the output to different file.
+
+# 在两个位置，运行四种配制下，不同数量的mode vector，可以写个程序，自动编译运行，把其他几种组合的，
+# timestep 和penalty，timestep和set，同时编译好了，放进不同的文件夹里跑跑几个程序。不用管时间了
+# 
+# setupA: single value + ATS
+#         single value + TS
+#         nu07 + ATS
+#         nu07 + TS
+# 
+# setupA: single value + ATS
+#         single value + TS
+#         nu07 + ATS
+#         nu07 + TS
+
+declare -a nf
+# nfArray=(10 20 30 40 60 80 100)
+nfArray=(10 20)
+for ((  i = 0 ;  i <= ${#nfArray[@]};  i++  ))
+
+# nu07: 0  ATS:3
+# nu07_ATS_10Eigen
+outPre="nu07_ATS_"
+outEnd="Eigen"
+
+do
+  nf=${nfArray[i]}
+  echo $nf
+  ./main /usr/users/laplace/zwang/backup/shortBeam_eigenData/C3D4_refined/MBSimData/ 0 3 $nf
+  outFolder="$outPre$nf$outEnd"
+  mv Integrator.sum $outFolder
+  mv *.h5 $outFolder
+  mv *.xml $outFolder
+done
