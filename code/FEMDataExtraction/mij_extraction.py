@@ -42,5 +42,5 @@ mijOutput.close()
 print 
 print len(mij), "mij data was stored in: ", dirOutput + os.sep + massOutputFileName
 text = "mij Extraction Finished!"
-print "\033[1;32m" + text + "\033[1;m" 
+print "\033[1;32m" + text + "\033[1;m" # print the text in green colour.
  
