@@ -1,45 +1,74 @@
 /* Copyright (C) 2004-2015 MBSim Development Team
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
+ * This library is free software; you can redistribute it and/or 
+ * modify it under the terms of the GNU Lesser General Public 
+ * License as published by the Free Software Foundation; either 
+ * version 2.1 of the License, or (at your option) any later version. 
+ *  
+ * This library is distributed in the hope that it will be useful, 
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
+ * Lesser General Public License for more details. 
+ *  
+ * You should have received a copy of the GNU Lesser General Public 
+ * License along with this library; if not, write to the Free Software 
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
  *
  * Contact: thorsten.schindler@mytum.de
  *          rzander@users.berlios.de
  */
 
-
 #include <config.h>
-#include <iostream>
-#include <finite_element_linear_external_lumped_node.h>
-
+#include "mbsimFlexibleBody/flexible_body/finite_elements/superelement_linear_external.h"
+#include <fstream>
 using namespace std;
 using namespace fmatvec;
 using namespace MBSim;
 
-
-
-
 namespace MBSimFlexibleBody {
-  FiniteElementLinearExternalLumpedNode::FiniteElementLinearExternalLumpedNode(double& mij_, fmatvec::Vec3& u0_, const fmatvec::Mat3xV& phi_) : DiscretizationInterface(), mij(mij_),u0(u0_), phi(phi_) {
-//    cout << "From lumpedNode mij =" << mij<< endl;
-//    cout << "From lumpedNode u0 =" << u0<< endl;
-//    cout << "From lumpedNode phi =" << phi<< endl;
 
+  SuperElementLinearExternal::SuperElementLinearExternal() : MBSim::DiscretizationInterface(), M(0), K(0), alpha(0.), beta(0.) {}
+
+  void SuperElementLinearExternal::init(Element::InitStage stage) {
+    if(stage==Element::unknownStage) {
+      D = static_cast<SqrMat>( alpha*M + beta * K );
+      Dhq = -K;
+      Dhqp = -D;
+    }
   }
 
-  FiniteElementLinearExternalLumpedNode::~FiniteElementLinearExternalLumpedNode(){
-
+  void SuperElementLinearExternal::setM(const SymMat &M_) {
+    if(M_.size()==getqSize() || getqSize()==0) M = M_;
+    else throw MBSimError("Massmatrix and stiffnessmatrix have unequal sizes!!!");
   }
 
+  void SuperElementLinearExternal::setK(const SqrMat &K_) {
+    if(K_.size()==getuSize() || getuSize()==0) K = K_;
+    else throw MBSimError("Massmatrix and stiffnessmatrix have unequal sizes!!!");
+  }
+
+  Vec SuperElementLinearExternal::computePosition(const Vec&q,const ContourPointData& cp) {
+    return computeJacobianOfMotion(q,cp).T()*q + KrP[cp.getNodeNumber()];
+  }
+
+  Mat SuperElementLinearExternal::computeJacobianOfMotion(const Vec&q,const ContourPointData& cp) {
+    return J[cp.getNodeNumber()];
+  }
+
+  MBSim::ContourPointData SuperElementLinearExternal::addInterface(Mat J_, Vec KrP_) {
+    if( (J_.rows()!= M.size() && M.size()!=0) || (J_.rows()!= K.size() && K.size()!=0) ) {
+      throw MBSimError("Jacobimatrix of interface does not fit in size to massmatrix and stiffnessmatrix!!!");
+    }
+    J.push_back(J_);
+    KrP.push_back(KrP_);
+    if(J.size()!=KrP.size()) {
+      throw MBSimError("In memory management for SuperElementLinearExternal interfaces");
+    }
+    MBSim::ContourPointData CP;
+    CP.getContourParameterType() = ContourPointData::node;
+    CP.getNodeNumber()   = J.size() - 1; // position of current Jacobian in array
+    CP.getFrameOfReference().getPosition() = KrP[CP.getNodeNumber()];
+
+    return CP;
+  }
 }
